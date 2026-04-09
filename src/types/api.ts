@@ -1,16 +1,44 @@
 export type User = {
-  id: number;
+  id: string;
   email: string;
   name: string;
-  role: "BUYER" | "ADMIN";
+  role: "buyer" | "admin";
 };
 
 export type Property = {
-  id: number;
+  id: string;
   title: string;
-  location: string;
-  price: number;
+  description: string | null;
+  price: number | null;
+  address: string | null;
+  city: string | null;
+  country: string | null;
+  propertyType: string | null;
+  status: "available" | "sold";
   createdAt: string;
-  updatedAt: string;
+  images: {
+    id: string;
+    imageUrl: string;
+  }[];
+};
+
+export type Review = {
+  id: string;
+  rating: number | null;
+  comment: string | null;
+  createdAt: string;
+  user: {
+    name: string;
+  } | null;
+};
+
+export type Inquiry = {
+  id: string;
+  message: string | null;
+  status: "pending" | "replied";
+  createdAt: string;
+  user: {
+    name: string;
+  } | null;
 };
 

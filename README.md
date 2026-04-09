@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Real Estate Next.js App
+
+A real estate platform built with Next.js, where users can view properties, submit reviews, ,send inquiries search, and sort properties.
+
+## Features
+- Property detail page with image gallery
+- Submit reviews and inquiries
+- Responsive design
+- Favourite properties management
+- Search properties by title or location
+- Sort properties by latest, price low-high, price high-low
+
+## Tech Stack
+- Frontend: Next.js (App Router) + React + TypeScript + Tailwind CSS
+- State: Redux
+- Backend API: Express + TypeScript
+- Database: PostgreSQL (Prisma ORM)
+- Auth: JWT
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js v18+ installed
+- PostgreSQL
 
+### Installation
 ```bash
+git clone https://github.com/<your-username>/<your-repo>.git
+cd <your-repo>
+npm install
+
+Environment Variables
+
+Create a .env file:
+
+NEXT_PUBLIC_API_BASE_URL="http://localhost:4000"
+
+Run Development Server
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

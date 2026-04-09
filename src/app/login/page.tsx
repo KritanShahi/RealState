@@ -2,19 +2,19 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiRequest } from "@/lib/api";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { loginUser, registerUser } from "@/store/portalSlice";
 
 type Mode = "login" | "register";
 
 export default function LoginPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { authLoading, authError } = useAppSelector((state) => state.portal);
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [isError, setIsError] = useState(false);
 
   const isRegister = mode === "register";
   const heading = useMemo(
@@ -24,28 +24,15 @@ export default function LoginPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    setIsError(false);
-
     try {
       if (isRegister) {
-        await apiRequest("/auth/register", {
-          method: "POST",
-          body: { name, email, password }
-        });
+        await dispatch(registerUser({ name, email, password })).unwrap();
       } else {
-        await apiRequest("/auth/login", {
-          method: "POST",
-          body: { email, password }
-        });
+        await dispatch(loginUser({ email, password })).unwrap();
       }
       router.push("/dashboard");
-    } catch (error) {
-      setIsError(true);
-      setMessage(error instanceof Error ? error.message : "Something went wrong");
-    } finally {
-      setLoading(false);
+    } catch {
+      // handled by Redux state
     }
   }
 
@@ -156,24 +143,20 @@ export default function LoginPage() {
                 />
               </div>
 
-              {message && (
+              {authError && (
                 <p
-                  className={`rounded-lg px-3 py-2 text-sm ${
-                    isError
-                      ? "border border-red-400/30 bg-red-500/10 text-red-200"
-                      : "border border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
-                  }`}
+                  className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
                 >
-                  {message}
+                  {authError}
                 </p>
               )}
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={authLoading}
                 className="mt-2 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Please wait..." : isRegister ? "Create account" : "Sign in"}
+                {authLoading ? "Please wait..." : isRegister ? "Create account" : "Sign in"}
               </button>
             </form>
           </div>

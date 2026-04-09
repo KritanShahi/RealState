@@ -2,84 +2,59 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiRequest } from "@/lib/api";
-import type { Property, User } from "@/types/api";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchDashboard, logoutUser, toggleFavourite as toggleFavouriteAction } from "@/store/portalSlice";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [me, setMe] = useState<User | null>(null);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [favourites, setFavourites] = useState<Set<number>>(new Set<number>());
-  const [busyPropertyId, setBusyPropertyId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const { me, properties, favourites, loading, error } = useAppSelector((state) => state.portal);
+  const [busyPropertyId, setBusyPropertyId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"latest" | "priceAsc" | "priceDesc">("latest");
 
   useEffect(() => {
-    let mounted = true;
+    dispatch(fetchDashboard());
+  }, [dispatch]);
 
-    async function load() {
-      setLoading(true);
-      try {
-        const [user, allProperties, userFavourites] = await Promise.all([
-          apiRequest<User>("/me"),
-          apiRequest<Property[]>("/properties"),
-          apiRequest<Property[]>("/favourites")
-        ]);
+  const favouriteCount = useMemo(() => favourites.length, [favourites]);
+  const filteredProperties = useMemo(() => {
+    const lower = search.toLowerCase();
+    const base = properties.filter((property) => {
+      const text = `${property.title} ${property.city ?? ""} ${property.country ?? ""}`.toLowerCase();
+      return text.includes(lower);
+    });
 
-        if (!mounted) return;
-        setMe(user);
-        setProperties(allProperties);
-        setFavourites(new Set(userFavourites.map((item) => item.id)));
-        setError(null);
-      } catch (loadError) {
-        if (!mounted) return;
-        setError(loadError instanceof Error ? loadError.message : "Unable to load dashboard");
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
+    return base.sort((a, b) => {
+      if (sortBy === "priceAsc") return (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER);
+      if (sortBy === "priceDesc") return (b.price ?? 0) - (a.price ?? 0);
+      return a.createdAt > b.createdAt ? -1 : 1;
+    });
+  }, [properties, search, sortBy]);
 
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  function formatPriceRs(price: number | null): string {
+    if (price === null) return "Price on request";
+    return `Rs ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(price)}`;
+  }
 
-  const favouriteCount = useMemo(() => favourites.size, [favourites]);
-
-  async function toggleFavourite(propertyId: number) {
-    const isFavourite = favourites.has(propertyId);
+  async function onToggleFavourite(propertyId: string) {
     setBusyPropertyId(propertyId);
     setFeedback(null);
-    setError(null);
-
     try {
-      await apiRequest(`/favourites/${propertyId}`, {
-        method: isFavourite ? "DELETE" : "POST"
-      });
-
-      setFavourites((prev) => {
-        const next = new Set(prev);
-        if (isFavourite) {
-          next.delete(propertyId);
-        } else {
-          next.add(propertyId);
-        }
-        return next;
-      });
-      setFeedback(isFavourite ? "Removed from favourites." : "Added to favourites.");
-    } catch (toggleError) {
-      setError(toggleError instanceof Error ? toggleError.message : "Action failed");
+      const wasFavourite = favourites.includes(propertyId);
+      await dispatch(toggleFavouriteAction(propertyId)).unwrap();
+      await dispatch(fetchDashboard());
+      setFeedback(wasFavourite ? "Removed from favourites." : "Added to favourites.");
+    } catch {
+      // handled in slice error
     } finally {
       setBusyPropertyId(null);
     }
   }
 
   async function logout() {
-    await apiRequest("/auth/logout", { method: "POST" }).catch(() => undefined);
+    await dispatch(logoutUser());
     router.push("/login");
   }
 
@@ -153,12 +128,28 @@ export default function DashboardPage() {
         <section className="mt-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold">Available Properties</h2>
-            <p className="text-sm text-slate-400">Click heart to add or remove favourites.</p>
+            <div className="flex items-center gap-2">
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search location or title"
+                className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm outline-none"
+              />
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as "latest" | "priceAsc" | "priceDesc")}
+                className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm"
+              >
+                <option value="latest">Latest</option>
+                <option value="priceAsc">Price Low-High</option>
+                <option value="priceDesc">Price High-Low</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {properties.map((property) => {
-              const isFavourite = favourites.has(property.id);
+            {filteredProperties.map((property) => {
+              const isFavourite = favourites.includes(property.id);
               const isBusy = busyPropertyId === property.id;
 
               return (
@@ -166,15 +157,25 @@ export default function DashboardPage() {
                   key={property.id}
                   className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:border-indigo-400/40"
                 >
+                  <div className="mb-4 overflow-hidden rounded-xl bg-slate-800">
+                    <img
+                      src={property.images?.[0]?.imageUrl || "https://placehold.co/800x500?text=No+Image"}
+                      alt={property.title}
+                      className="h-44 w-full cursor-pointer object-cover transition hover:scale-[1.02]"
+                      onClick={() => router.push(`/dashboard/properties/${property.id}`)}
+                    />
+                  </div>
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h3 className="text-lg font-semibold text-white">{property.title}</h3>
-                      <p className="mt-1 text-sm text-slate-400">{property.location}</p>
+                      <p className="mt-1 text-sm text-slate-400">
+                        {[property.city, property.country].filter(Boolean).join(", ") || "Location TBD"}
+                      </p>
                     </div>
                     <button
                       type="button"
                       disabled={isBusy}
-                      onClick={() => toggleFavourite(property.id)}
+                      onClick={() => onToggleFavourite(property.id)}
                       className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
                         isFavourite
                           ? "bg-pink-500/20 text-pink-200 hover:bg-pink-500/30"
@@ -188,7 +189,7 @@ export default function DashboardPage() {
                   <div className="mt-5 flex items-end justify-between">
                     <p className="text-sm text-slate-400">Price</p>
                     <p className="text-xl font-bold text-indigo-200">
-                      ${property.price.toLocaleString()}
+                      {formatPriceRs(property.price)}
                     </p>
                   </div>
                 </article>
@@ -197,6 +198,7 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
     </main>
   );
 }
