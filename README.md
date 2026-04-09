@@ -23,19 +23,19 @@ A real estate platform built with Next.js, where users can view properties, subm
 - Node.js v18+ installed
 - PostgreSQL
 
-### Installation
-```bash
-git clone https://github.com/<your-username>/<your-repo>.git
-cd <your-repo>
+## Installation
+
+git clone <https://github.com/KritanShahi/RealState.git>
+
 npm install
 
-Environment Variables
+## Environment Variables
 
 Create a .env file:
 
 NEXT_PUBLIC_API_BASE_URL="http://localhost:4000"
 
-Run Development Server
+## Run Development Server
 
 npm run dev
 
